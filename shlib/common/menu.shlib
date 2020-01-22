@@ -1,0 +1,104 @@
+#!/bin/cat
+###############################################################################
+# Shell Library - common/menu.shlib
+#
+# DO NOT EXECUTE DIRECTLY.
+#
+# Purpose: Provide a simple menu to selection options
+#
+# Requires:
+#	- bootstrap.shlib
+#	- common/utils.shlib
+#
+###############################################################################
+#
+# Copyright 2020 Clinton Johnson
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included 
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+# DEALINGS IN THE SOFTWARE.
+#
+###############################################################################
+#
+# Example:
+#
+#	menu RESULT "Pick and option\n" "or press esc to abort\n>"\
+#		"Alpha" "Beta" "Gamma\n"
+#	if [ $? -eq 0 ]; then
+#		${PRINTF}  "\nYou l_SELECTED ${RESULT}\n"
+#	else
+#		${PRINTF} "\nYou bailed\n"
+#	fi
+#
+###############################################################################
+
+function menu {
+
+	local l_RESULT="${1}"
+	shift
+
+	local l_HEADER="${1}"
+	shift
+	local l_FOOTER="${1}"
+	shift
+
+	local l_SELECTED
+
+	while true; do
+		${PRINTF} "${l_HEADER}"
+		local i=0
+		local key
+		for key in "${@,,}"; do
+			local KEY=${key^^}
+			if [[ i -eq 0 ]]; then 
+				${PRINTF} "  [${KEY:0:1}]${KEY:1}\n"
+			else
+				${PRINTF} "   ${KEY:0:1} ${key:1}\n"
+			fi
+			i+=1
+		done;
+		if [ "${l_FOOTER}" == "" ]; then
+			${PRINTF} "> "
+		else
+			${PRINTF} "${l_FOOTER}"
+		fi
+		read -n1 -r -s l_SELECTED
+
+		if [ "${l_SELECTED}" == $'\e' ]; then
+			${PRINTF} "[esc]\n"
+			eval ${l_RESULT}=""
+			${RETURN_FALSE} # aborted
+		fi
+
+		if [ "${l_SELECTED}" == $'' ]; then
+			${PRINTF} "${1,,}\n"
+			eval ${l_RESULT}="\"${1,,}\""
+			${RETURN_TRUE} # Good result
+		fi
+
+		local item
+		for item in "${@}"; do
+			local l_TEST="${item,,}"
+			if [ "${l_SELECTED}" == "${l_TEST:0:1}" ]; then
+				${PRINTF} "${item}\n"
+				eval ${l_RESULT}="\"${item}\""
+				${RETURN_TRUE} # Good result
+			fi
+		done
+		${PRINTF} "\n\n"
+	done
+}

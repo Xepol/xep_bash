@@ -1,0 +1,256 @@
+#!/bin/cat
+###############################################################################
+# Shell Library - common/ansi.shlib
+#
+# DO NOT EXECUTE DIRECTLY.
+#
+# Purpose:
+#	Ansi l_PARAMETER rendering engine
+#
+# Requires:
+#	- bootstrap.shlib
+#	- common/utils.shlib
+#
+###############################################################################
+#
+# Copyright 2020 Clinton Johnson
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included 
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+# DEALINGS IN THE SOFTWARE.
+#
+###############################################################################
+# References:
+#	- https://en.wikipedia.org/wiki/ANSI_escape_code
+#	- https://misc.flogisoft.com/bash/tip_colors_and_formatting
+#
+###############################################################################
+# Example:
+#
+#	printf "\n\n$(ansi cls i green)WELCOME$(ansi -i)$(ansi @14\;10)yo!""$(ansi off)\n\n\n"
+#	printf "\n\n$(ansi debug cls i green)WELCOME$(ansi debug -i)$(ansi debug @14\;10)yo!""$(ansi debug off)\n\n\n"
+#
+###############################################################################
+
+function ansi {
+
+	# No point trying to emit ansi to non-interactive sessions
+	case $- in
+	    *i*) ;;
+	      *) echo ""; return;;
+	esac
+
+	if [ "${ANSI_MODE,,}" == "off" ]; then
+		echo ""; 
+		return;
+	fi
+
+	local l_ESCAPE="\e"
+
+	local l_RESULT="" 
+	local l_COLORMODE="3"
+	local l_LTCOLORMODE="9"
+	local l_CURRENT_COMMAND=""
+	local l_COMMAND=""
+	local l_PARAMETER=""
+	local l_PARAMETERS=""
+	local l_RAW_CSI=""
+	local L_ANSI_CSI="${l_ESCAPE}["
+
+	local item
+
+	for item  in "${@,,}"; do
+
+		l_PARAMETER=""
+		l_COMMAND=""
+		l_RAW_CSI=""
+		case $item in
+			debug)		L_ANSI_CSI="e["; l_ESCAPE="e";;
+			fg)		l_COLORMODE="3"; l_LTCOLORMODE="9";;
+			bg)		l_COLORMODE="4"; l_LTCOLORMODE="10";;
+			lt)		case $l_COLORMODE in 3) l_COLORMODE="9";; 4) l_COLORMODE="10";; esac;;
+			dk)		case $l_COLORMODE in 9) l_COLORMODE="3";; 10) l_COLORMODE="4";; esac;;
+
+			off|\
+			reset)		l_PARAMETER="0"; l_COMMAND="m";;
+			n|normal)	l_PARAMETER="0"; l_COMMAND="m";;
+			b|bold)		l_PARAMETER="1"; l_COMMAND="m";;
+			d|dim)		l_PARAMETER="2"; l_COMMAND="m";;
+			_|u|underline)	l_PARAMETER="4"; l_COMMAND="m";;
+			blink)		l_PARAMETER="5"; l_COMMAND="m";;
+			i|inverse)	l_PARAMETER="7"; l_COMMAND="m";;
+			h|hidden)	l_PARAMETER="8"; l_COMMAND="m";;
+
+			-b|-bold)	l_PARAMETER="21"; l_COMMAND="m";;
+			-d|-dim)	l_PARAMETER="22"; l_COMMAND="m";;
+			-_|-u|-underline)
+					l_PARAMETER="24"; l_COMMAND="m";;
+			-blink)		l_PARAMETER="25"; l_COMMAND="m";;
+			-i)		l_PARAMETER="27"; l_COMMAND="m";;
+			-h|-hidden)	l_PARAMETER="28"; l_COMMAND="m";;
+
+			0|black)	l_PARAMETER="${l_COLORMODE}0"; l_COMMAND="m";;
+			1|red)		l_PARAMETER="${l_COLORMODE}1"; l_COMMAND="m";;
+			2|green)	l_PARAMETER="${l_COLORMODE}2"; l_COMMAND="m";;
+			4|yellow)	l_PARAMETER="${l_COLORMODE}3"; l_COMMAND="m";;
+			4|blue)		l_PARAMETER="${l_COLORMODE}4"; l_COMMAND="m";;
+			5|magenta)	l_PARAMETER="${l_COLORMODE}5"; l_COMMAND="m";;
+			6|cyan)		l_PARAMETER="${l_COLORMODE}6"; l_COMMAND="m";;
+			7|ltgray)	l_PARAMETER="${l_COLORMODE}7"; l_COMMAND="m";;
+			9|default)	l_PARAMETER="${l_COLORMODE}9"; l_COMMAND="m";;
+
+			dkgray|\
+			darkgray)	l_PARAMETER="${l_LTCOLORMODE}0"; l_COMMAND="m";;
+			ltred|\
+			lightred)	l_PARAMETER="${l_LTCOLORMODE}1"; l_COMMAND="m";;
+			ltgreen|\
+			lightgreen)	l_PARAMETER="${l_LTCOLORMODE}2"; l_COMMAND="m";;
+			ltyellow|\
+			lightyellow)	l_PARAMETER="${l_LTCOLORMODE}3"; l_COMMAND="m";;
+			ltblue|\
+			lightblue)	l_PARAMETER="${l_LTCOLORMODE}4"; l_COMMAND="m";;
+			ltmagenta|\
+			lightmagenta)	l_PARAMETER="${l_LTCOLORMODE}5"; l_COMMAND="m";;
+			ltcyan|\
+			lightcyan)	l_PARAMETER="${l_LTCOLORMODE}6"; l_COMMAND="m";;
+			white)		l_PARAMETER="${l_LTCOLORMODE}7"; l_COMMAND="m";;
+
+			rgb*)		l_PARAMETER="${l_COLORMODE}8;2;${item:3}"; l_COMMAND="m";;
+
+			home)		l_PARAMETER=""; l_COMMAND="H";;
+			save)		l_PARAMETER=""; l_COMMAND="s";;
+			restore)	l_PARAMETER=""; l_COMMAND="u";;
+
+			eraseeol)	l_PARAMETER="0"; l_COMMAND="K";;
+			erase*)		l_PARAMETER="${item:5}"; l_COMMAND="K";;
+			clear*)		l_PARAMETER="${item:5}"; l_COMMAND="J";;
+			\@*)		l_PARAMETER="${item:1}"; l_COMMAND="H";;
+			pos*)		l_PARAMETER="${item:3}"; l_COMMAND="H";;
+			up*)		l_PARAMETER="${item:2}"; l_COMMAND="A";;
+			down*)		l_PARAMETER="${item:4}"; l_COMMAND="B";;
+			right*)		l_PARAMETER="${item:5}"; l_COMMAND="C";;
+			left*)		l_PARAMETER="${item:4}"; l_COMMAND="D";;
+			col*)		l_PARAMETER="${item:4}"; l_COMMAND="G";;
+			row*)		l_PARAMETER="${item:4}"; l_COMMAND="";;
+
+			cls)		l_RAW_CSI="${l_ESCAPE}c";;
+		esac
+
+		# Ansi l_COMMAND changed or l_RAW_CSI was provided, if so emit any curent sequence being built.
+		if [[ ! -z "${l_RAW_CSI}" ]] || \
+		   [[ ! -z "${l_CURRENT_COMMAND}" && "${l_COMMAND}" != "${l_CURRENT_COMMAND}" ]]; then
+			if [[ ! -z "${l_PARAMETERS}" || ! -z "${l_CURRENT_COMMAND}" ]]; then
+				l_RESULT+="${L_ANSI_CSI}${l_PARAMETERS}${l_CURRENT_COMMAND}"
+				l_PARAMETERS=""
+				l_CURRENT_COMMAND=""
+			fi
+			if [[ ! -z "${l_RAW_CSI}" ]]; then
+				l_RESULT+="${l_RAW_CSI}"
+			fi
+		fi
+
+		# Do we have a new l_COMMAND?
+		if [[ -z "${l_CURRENT_COMMAND}" && ! -z "${l_COMMAND}" ]]; then
+			l_CURRENT_COMMAND="${l_COMMAND}"
+		fi
+
+		# Are we adding l_PARAMETERS?
+		if [[ ! -z "${l_PARAMETER}" ]]; then
+			if [[ -z "${l_PARAMETERS}" ]]; then
+				l_PARAMETERS="${l_PARAMETER}"
+			else
+				l_PARAMETERS+=";${l_PARAMETER}"
+			fi
+		fi
+	done
+	# IS there anything pending to emit after the loop?
+	if [[ ! -z "${l_PARAMETERS}" || ! -z "${l_CURRENT_COMMAND}" ]]; then
+		l_RESULT+="${L_ANSI_CSI}${l_PARAMETERS}${l_CURRENT_COMMAND}"
+	fi
+	${RETURN_STRING} "${l_RESULT}"
+}
+
+function ansidebug () {
+	local l_RESULT="$(ansi debug "$@")"
+
+	${RESULT_STRING} "${l_RESULT}"
+}
+
+function testansi_16color () {
+# This program is free software. It comes without any warranty, to
+# the extent permitted by applicable law. You can redistribute it
+# and/or modify it under the terms of the Do What The Fuck You Want
+# To Public License, Version 2, as published by Sam Hocevar. See
+# http://sam.zoy.org/wtfpl/COPYING for more details.
+ 
+	#Background
+
+	local clbg
+	local clfg
+	local attr
+	for clbg in {40..47} {100..107} 49 ; do
+		#Foreground
+		for clfg in {30..37} {90..97} 39 ; do
+			#Formatting
+			for attr in 0 1 2 4 5 7 ; do
+				#Print the l_RESULT
+				echo -en "\e[${attr};${clbg};${clfg}m ^[${attr};${clbg};${clfg}m \e[0m"
+			done
+			echo #Newline
+		done
+	done
+
+}
+
+function testansi_256color () {
+# This program is free software. It comes without any warranty, to
+# the extent permitted by applicable law. You can redistribute it
+# and/or modify it under the terms of the Do What The Fuck You Want
+# To Public License, Version 2, as published by Sam Hocevar. See
+# http://sam.zoy.org/wtfpl/COPYING for more details.
+
+	local fgbg
+	local color
+	for fgbg in 38 48 ; do # Foreground / Background
+		for color in {0..255} ; do # Colors
+			# Display the color
+			printf "\e[${fgbg};5;%sm  %3s  \e[0m" $color $color
+			# Display 6 colors per lines
+			if [ $((($color + 1) % 6)) == 4 ] ; then
+				echo # New line
+			fi
+		done
+		echo # New line
+	done
+}
+
+function testansi_wiki () {
+
+	local i
+	local j
+	local n
+\
+	for i in {0..10} ; do 
+		for j in {1..10} ; do 
+			n=$(( 10 * i + j - 1 ))
+			if [ $n -lt 109 ]; then  
+				printf "\e[%dm %3d\e[m" ${n} ${n}
+			fi
+		done
+		printf "\n"
+	done
+}

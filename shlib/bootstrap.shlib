@@ -1,0 +1,73 @@
+#!/bin/cat
+###############################################################################
+# Shell Library - bootstrap.shlib
+#
+# DO NOT EXECUTE DIRECTLY.
+#
+# Purpose:
+#	Bootstrap code to load .shlib files in folders
+#
+# Requires:
+#	- bash 4.4 or higher
+#
+###############################################################################
+#
+# Copyright 2020 Clinton Johnson
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included 
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+# DEALINGS IN THE SOFTWARE.
+#
+###############################################################################
+#
+# Examples:
+#
+#	if [ -f ".shlib/bootstrap.shlib" ]; then
+#		source ".shlib/bootstrap.shlib"
+#		bootstrapLoad ".shlib/common"
+#	else
+#		echo "Mising bootstrap"
+#		exit
+#	fi
+#
+###############################################################################
+
+function loadSHLibInFolder {
+
+	local l_FOLDER="${1}"
+	local l_Filename
+
+	for l_filename in $(ls ${l_FOLDER}) ; do
+
+		local l_fullname="${l_FOLDER}/${l_filename}"
+		local l_filename_ext="${l_filename#*.}";  if [ "${l_filename_ext}" == "${l_filename}" ]; then l_filename_ext=""; fi;  if [ "${l_filename_ext}" != "" ]; then l_filename_ext=".${l_filename_ext}"; fi
+
+		if [ -f "${l_fullname}" ] && [ "${l_filename_ext}" == ".shlib" ]; then
+			source "${l_fullname}"
+		fi
+	done
+}
+
+function bootstrapLoad {
+
+	local l_LIBPATH
+
+	for l_LIBPATH in "$@"; do
+		loadSHLibInFolder "${l_LIBPATH}"
+	done
+
+}

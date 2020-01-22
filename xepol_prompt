@@ -1,0 +1,288 @@
+#!/bin/bash
+###############################################################################
+# xep_bash - xepol_prompt
+#
+# DO NOT EXECUTE DIRECTLY.
+#
+# Purpose : Custom prompt, looks nice, based on appearance of powerline and
+#		other
+#
+# Requires:
+#	- bootstrap.shlib
+#	- common/utils.shlib
+#
+###############################################################################
+#
+# Copyright 2020 Clinton Johnson
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included 
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+# DEALINGS IN THE SOFTWARE.
+#
+###############################################################################
+
+export PROMPT_SEPARATOR="▓▒░"
+export PROMPT_BRANCH_SYMBOL="└┬┘"
+export PROMPT_SEPARATOR=$'\uE0B0 '
+export PROMPT_BRANCH_SYMBOL=$'\uE0A0 '
+export PROMPT_OK="^_^"
+export PROMPT_FAIL="O_O"
+
+export COLOR_FG_git_branch="rgb255;255;255"
+export COLOR_BG_git_branch="rgb0;0;192"
+export COLOR_FG_git_modified="rgb192;192;192"
+export COLOR_BG_git_modified="rgb0;96;0"
+export COLOR_FG_git_deleted="rgb192;192;192"
+export COLOR_BG_git_deleted="rgb96;0;0"
+export COLOR_FG_git_renamed="rgb192;192;192"
+export COLOR_BG_git_renamed="rgb0;128;128"
+
+export COLOR_FG_git_new="rgb192;192;192"
+export COLOR_BG_git_new="rgb96;96;96"
+
+export COLOR_FG_git_pwd="rgb255;255;255"
+export COLOR_BG_git_pwd="rgb96;0;96"
+
+export COLOR_FG_status_OK="rgb0;192;0"
+export COLOR_BG_status_OK="rgb0;64;0"
+export COLOR_FG_status_FAIL="rgb192;0;0"
+export COLOR_BG_status_FAIL="rgb64;0;0"
+
+export COLOR_FG_user="rgb192;192;192"
+export COLOR_BG_user="rgb0;0;128"
+export COLOR_FG_host="rgb192;192;192"
+export COLOR_BG_host="rgb0;0;168"
+export COLOR_FG_pwd="rgb192;192;192"
+export COLOR_BG_pwd="rgb0;0;192"
+export COLOR_FG_rootuser="rgb192;192;192"
+export COLOR_BG_rootuser="rgb128;0;0"
+export COLOR_FG_roothost="rgb192;192;192"
+export COLOR_BG_roothost="rgb168;0;0"
+export COLOR_FG_rootpwd="rgb192;192;192"
+export COLOR_BG_rootpwd="rgb192;0;0"
+
+export COLOR_FG_done="default"
+export COLOR_BG_done="default"
+
+function GIT_BRANCH {
+
+	local R=$?
+	local BRANCH=$(git branch | grep "*" -a | sed "s/* //g")
+	if [ $? ]; then
+		echo $BRANCH
+	else
+		echo ""
+	fi
+	return ${R}
+
+}
+
+function PROMPT_JOIN () {
+
+	local R=$?
+	local cName1="${1}"
+	local item="${2}"
+	local cName2="${3}"
+
+	local fg1="COLOR_FG_${cName1}"
+	local bg1="COLOR_BG_${cName1}"
+	local fg2="COLOR_FG_${cName2}"
+	local bg2="COLOR_BG_${cName2}"
+
+	fg1=$(eval echo \$$fg1)
+	bg1=$(eval echo \$$bg1)
+	fg2=$(eval echo \$$fg2)
+	bg2=$(eval echo \$$bg2)
+
+	local RESULT="$(ansi fg ${fg1} bg ${bg1})"
+	RESULT+="${item} "
+	RESULT+="$(ansi fg ${bg1} bg ${bg2})"
+	RESULT+="${PROMPT_SEPARATOR}"
+	RESULT+="$(ansi fg ${fg2} bg ${bg2})"
+	echo "${RESULT}"
+}
+
+function PS1_JOIN () {
+
+	local R=$?
+	local cName1="${1}"
+	local item="${2}"
+	local cName2="${3}"
+	local doSED="${4}"
+
+	local fg1="COLOR_FG_${cName1}"
+	local bg1="COLOR_BG_${cName1}"
+	local fg2="COLOR_FG_${cName2}"
+	local bg2="COLOR_BG_${cName2}"
+
+	fg1=$(eval echo \$$fg1)
+	bg1=$(eval echo \$$bg1)
+	fg2=$(eval echo \$$fg2)
+	bg2=$(eval echo \$$bg2)
+
+	local RESULT="\[$(ansi fg ${fg1} bg ${bg1})\]"
+	RESULT+="${item} "
+	RESULT+="\[$(ansi fg ${bg1} bg ${bg2})\]"
+	RESULT+="${PROMPT_SEPARATOR}"
+	RESULT+="\[$(ansi fg ${fg2} bg ${bg2})\]"
+
+	if [[ ! -z "${doSED}" ]]; then
+		echo "${RESULT}" | sed 's/;/\\;/g'
+	else
+		echo "${RESULT}"
+	fi
+	return ${R}
+}
+
+function PROMPT_FORMATTER () {
+
+	local R=$?
+
+	local RESULT=""	
+	while [ $# -gt 2 ]; do
+		local cName1="${1}"
+		local item="${2}"
+		local cName2="${3}"
+		shift 2
+		RESULT+="$(PROMPT_JOIN "${cName1}" "${item}" "${cName2}" )"
+	done
+	RESULT+="$(ansi off)"
+
+	echo -e "${RESULT}"
+	return ${R}
+}
+
+function PS1_FORMATTER () {
+
+	local R=$?
+	local RESULT=""	
+
+	while [ $# -gt 2 ]; do
+		local cName1="${1}"
+		local item="${2}"
+		local cName2="${3}"
+		shift 2
+		RESULT+="$(PS1_JOIN "${cName1}" "${item}" "${cName2}" )"
+	done
+	RESULT+="\[$(ansi off)\]"
+
+	echo -e "${RESULT}"
+	return ${R}
+}
+
+function PROMPT_GIT_INFO {
+
+	local R=$?
+	local FORMATTER="${1:-PROMPT_FORMATTER}"
+
+	git branch >/dev/null 2>/dev/null
+	if [ $? -eq 0 ]; then
+		local BRANCH="$(git branch | grep -o -P '\*.*' | sed 's\* \\g')"
+		local MODIFIED="$(git status -s | sort | grep '^\s*M\s' | wc -l)"
+		local DELETED="$(git status -s | sort | grep '^\s*D\s' | wc -l)"
+		local RENAMED="$(git status -s | sort | grep '^\s*R\s' | wc -l)"
+		local UNTRACKED="$(git status -s | sort | grep '^\s*??\s' | wc -l)"
+	
+		echo -e "$(${FORMATTER} \
+				"git_branch" "${PROMPT_BRANCH_SYMBOL} ${BRANCH}"\
+				"git_modified" "Mod: ${MODIFIED}"\
+				"git_renamed" "Ren: ${RENAMED}" \
+				"git_deleted" "Del: ${DELETED}" \
+				"git_new" "New: ${UNTRACKED}" \
+				"git_pwd" "$(PROMPT_GIT_PWD)" \
+				"done" \
+			)"
+	else
+		echo -e "$(${FORMATTER} \
+				"git_pwd" "$(PROMPT_GIT_PWD)" \
+				"done" \
+			)"
+	fi
+
+	return $R
+}
+
+function PROMPT_GIT_PWD {
+
+	local R=$?
+
+	echo "${PWD}" | sed "s|^${HOME}|~|g"
+
+	return $R
+}
+
+function PROMPT_PWD {
+
+	local R=$?
+	local RESULT="${PWD}"
+
+	if [ "${RESULT}" == "${HOME}" ]; then
+		RESULT="~"
+	else
+		RESULT="$(fileName "${PWD}")"
+	fi
+
+	echo ${RESULT}
+	return $R
+}
+
+function MY_PS1 {
+
+	local R=$?
+	local FORMATTER="${1:=PS1_FORMATTER}"
+
+	if  isRoot; then
+		echo -e "$(${FORMATTER} \
+				"done" "" \
+				"rootuser" "\u" \
+				"roothost" "\h" \
+				"rootpwd" "\$(PROMPT_PWD)" \
+				"done" \
+			)"
+	else
+		echo -e "$(${FORMATTER} \
+				"done" "" \
+				"user" "\u" \
+				"host" "\h" \
+				"pwd" "\$(PROMPT_PWD)" \
+				"done" \
+			)"
+	fi
+
+	return ${R}
+}
+
+function PS1_TB1 () {
+
+	local R=$?
+	local e
+
+	e+="$(ansi save)"
+	e+="$(ansi @1\;1 eraseeol)"
+	e+="$(PROMPT_GIT_INFO PROMPT_FORMATTER)"
+	e+="$(ansi restore)"
+	echo -e "${e}"
+
+	return ${R}
+}
+
+LAST_RESULT="\`if [ \$? = 0 ]; then echo $(PS1_JOIN "status_OK" "${PROMPT_OK}" "done" "SED" ); else echo $(PS1_JOIN "status_FAIL" "${PROMPT_FAIL}" "done" "SED" ); fi \`"
+
+#PS1="${LAST_RESULT}$(MY_PS1 PS1_FORMATTER)\$ \[\$(PS1_TB1)\]"
+PS1="\n\$(PROMPT_GIT_INFO PROMPT_FORMATTER)\n${LAST_RESULT}$(MY_PS1 PS1_FORMATTER)\$ "
+
+PS2='(cont) >'
